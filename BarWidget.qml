@@ -69,10 +69,14 @@ BarWidget {
   }
 
   function pause() {
+    // OMOBACK: pause disabled during focus phase so the focus session
+    // always runs to completion and the break lock always fires.
+    if (phase === Model.PHASE_WORK) return
     state = Model.STATE_PAUSED
   }
 
   function togglePlayPause() {
+    if (phase === Model.PHASE_WORK && isRunning) return // no pause during focus
     if (isRunning) pause()
     else start()
   }
@@ -95,9 +99,9 @@ BarWidget {
   }
 
   function skipPhase() {
-    var nextInfo = Model.nextPhaseInfo(phase, completedSessions, longBreakInterval)
-    completedSessions = nextInfo.completedSessions
-    setPhase(nextInfo.nextPhase, false)
+    // OMOBACK: skipping is disabled — phases must always run to completion
+    // so the break lock always fires at the right moment.
+    return
   }
 
   function adjustTime(secondsDelta) {
@@ -135,6 +139,13 @@ BarWidget {
     }
 
     var autoStart = (nextPhase === Model.PHASE_WORK) ? autoStartWork : autoStartBreaks
+
+    // OMOBACK: focus session ended -> force-lock screen for a real break
+    if (oldPhase === Model.PHASE_WORK) {
+      Quickshell.execDetached(["sh", "-c",
+        "/home/ebrana/.local/bin/omoback-hook work >/dev/null 2>&1 &"])
+    }
+
     setPhase(nextPhase, autoStart)
   }
 
