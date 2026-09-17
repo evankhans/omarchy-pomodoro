@@ -103,6 +103,10 @@ BarWidget {
     } else {
       state = Model.STATE_IDLE
     }
+    if (newPhase === Model.PHASE_WORK) {
+      // Clear the lock-screen countdown so the patched lock view hides it.
+      Quickshell.execDetached(["sh", "-c", "rm -f '" + countdownPath + "'"])
+    }
   }
 
   function skipPhase() {
@@ -167,6 +171,21 @@ BarWidget {
       timeLeft = 0
       finishSession()
     }
+    publishCountdown()
+  }
+
+  // Publish break countdown for the lock-screen countdown patch: a small
+  // state file the patched lock screen reads every second. Only written
+  // during an active break phase (short or long).
+  readonly property string stateRoot: Quickshell.env("XDG_STATE_HOME") || (Quickshell.env("HOME") + "/.local/state")
+  readonly property string countdownPath: stateRoot + "/omarchy/pomodoro-break-state"
+
+  function publishCountdown() {
+    if (phase === Model.PHASE_WORK) return
+    if (isIdle) return
+    Quickshell.execDetached(["sh", "-c",
+      "mkdir -p '" + stateRoot + "/omarchy' && printf '%s   %s\\n' '" +
+      phaseName + "' '" + timeString + "' > '" + countdownPath + "'"])
   }
 
   function resetSessionsCount() {
