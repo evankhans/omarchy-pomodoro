@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# omarchy-pomodoro-break-hook: called by the omarchy-pomodoro plugin when a
+# focus session ends and strict-break mode is enabled (lockOnBreak).
+# $1 = phase that just finished ("work" | "short_break" | "long_break")
+
+label="${1:-}"
+
+if [[ "$label" == "work" ]]; then
+  omarchy-notification-send -u critical -t 15000 \
+    "Break time." \
+    "Focus session complete. Stand up, move around. Screen locks until you resume." \
+    2>/dev/null || true
+  omarchy system lock
+fi

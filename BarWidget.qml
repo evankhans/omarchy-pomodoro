@@ -22,6 +22,13 @@ BarWidget {
   readonly property bool showIconInBar: setting("showIconInBar", true)
   readonly property bool showOnlyWhenRunning: setting("showOnlyWhenRunning", false)
 
+  // Strict-break mode: when enabled, finishing a focus session locks the
+  // screen via `omarchy system lock` (enforced through the plugin's own
+  // hook script, see bin/omarchy-pomodoro-break-hook) so the break is
+  // actually taken. Also gates the pause/skip guards below.
+  readonly property bool lockOnBreak: setting("lockOnBreak", false)
+  readonly property bool enforceFullFocus: setting("enforceFullFocus", false)
+
   // Pomodoro State
   property string phase: Model.PHASE_WORK
   property string state: Model.STATE_IDLE
@@ -69,14 +76,14 @@ BarWidget {
   }
 
   function pause() {
-    // OMOBACK: pause disabled during focus phase so the focus session
-    // always runs to completion and the break lock always fires.
-    if (phase === Model.PHASE_WORK) return
+    // Strict-focus mode: pause disabled during focus phase so the focus
+    // session always runs to completion and the break lock always fires.
+    if (enforceFullFocus && phase === Model.PHASE_WORK) return
     state = Model.STATE_PAUSED
   }
 
   function togglePlayPause() {
-    if (phase === Model.PHASE_WORK && isRunning) return // no pause during focus
+    if (enforceFullFocus && phase === Model.PHASE_WORK && isRunning) return // no pause during focus when strict
     if (isRunning) pause()
     else start()
   }
@@ -99,9 +106,12 @@ BarWidget {
   }
 
   function skipPhase() {
-    // OMOBACK: skipping is disabled — phases must always run to completion
-    // so the break lock always fires at the right moment.
-    return
+    // Strict-break mode: skipping is disabled — phases must always run to
+    // completion so the break lock always fires at the right moment.
+    if (lockOnBreak || enforceFullFocus) return
+    var nextInfo = Model.nextPhaseInfo(phase, completedSessions, longBreakInterval)
+    completedSessions = nextInfo.completedSessions
+    setPhase(nextInfo.nextPhase, false)
   }
 
   function adjustTime(secondsDelta) {
@@ -140,10 +150,11 @@ BarWidget {
 
     var autoStart = (nextPhase === Model.PHASE_WORK) ? autoStartWork : autoStartBreaks
 
-    // OMOBACK: focus session ended -> force-lock screen for a real break
-    if (oldPhase === Model.PHASE_WORK) {
+    // Strict-break mode: focus session ended -> lock screen for a real break
+    if (lockOnBreak && oldPhase === Model.PHASE_WORK) {
+      var hookScript = Qt.resolvedUrl(".").toString().replace(/^file:\/\//, "") + "bin/omarchy-pomodoro-break-hook"
       Quickshell.execDetached(["sh", "-c",
-        "/home/ebrana/.local/bin/omoback-hook work >/dev/null 2>&1 &"])
+        "\"" + hookScript + "\" work >/dev/null 2>&1 &"])
     }
 
     setPhase(nextPhase, autoStart)

@@ -681,6 +681,32 @@ Panel {
             // Behavior Toggles
             Toggle {
               width: parent.width
+              label: "Lock screen on break"
+              description: "Lock the screen when a focus session ends so the break is actually taken"
+              checked: timerHost ? timerHost.lockOnBreak : false
+              foreground: root.contentForeground
+              accent: root.accentColor
+              fontFamily: root.contentFontFamily
+              onClicked: {
+                root.persist({ lockOnBreak: !checked })
+              }
+            }
+
+            Toggle {
+              width: parent.width
+              label: "Enforce full focus"
+              description: "Prevent pausing during focus sessions (works best with lock screen on break)"
+              checked: timerHost ? timerHost.enforceFullFocus : false
+              foreground: root.contentForeground
+              accent: root.accentColor
+              fontFamily: root.contentFontFamily
+              onClicked: {
+                root.persist({ enforceFullFocus: !checked })
+              }
+            }
+
+            Toggle {
+              width: parent.width
               label: "Auto-start breaks"
               description: "Automatically start timer when a break begins"
               checked: timerHost ? timerHost.autoStartBreaks : false
